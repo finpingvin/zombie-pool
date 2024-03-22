@@ -5,15 +5,17 @@ function Ball:new(args)
     local x = assert(args.x)
     local y = assert(args.y)
     local radius = assert(args.radius)
-    local velocity_x = assert(args.velocity_x)
-    local velocity_y = assert(args.velocity_y)
+    local vx = assert(args.vx)
+    local vy = assert(args.vy)
+    local friction = assert(args.friction)
     return setmetatable(
         {
             x=x,
             y=y,
             radius=radius,
-            velocity_x=velocity_x,
-            velocity_y=velocity_y,
+            vx=vx,
+            vy=vy,
+            friction=friction,
         },
         Ball_mt
     )
@@ -28,7 +30,7 @@ Table = {
 }
 
 function love.load()
-    Whiteball = Ball:new{x=400, y=300, radius=10, velocity_x=300, velocity_y=0}
+    Whiteball = Ball:new{x=400, y=300, radius=10, vx=300, vy=0, friction=0.995}
 end
 
 function love.draw()
@@ -37,7 +39,20 @@ function love.draw()
 end
 
 function love.update(dt)
-    Whiteball.x = Whiteball.x + (Whiteball.velocity_x * dt)
+    -- Using a power here could make the friction framerate independent (probably overkill)
+    -- Should I try to shoehorn a fixed timestamp in love somehow?
+    -- Whiteball.vx = Whiteball.vx * (Whiteball.friction^dt)
+
+    local vMagnitude = math.sqrt(Whiteball.vx^2 + Whiteball.vy^2)
+    local dynamicFriction = Whiteball.friction - (vMagnitude * 0.0015)
+    dynamicFriction = math.max(dynamicFriction, 0.99)
+
+    Whiteball.vx = Whiteball.vx * dynamicFriction
+
+    if math.abs(Whiteball.vx) < 2 then Whiteball.vx = 0 end
+
+    Whiteball.x = Whiteball.x + Whiteball.vx * dt
+
     if (Whiteball.x + Whiteball.radius) > (Table.x + Table.width) or (Whiteball.x - Whiteball.radius) < Table.x then
         if (Whiteball.x + Whiteball.radius) > (Table.x + Table.width) then
             Whiteball.x = Table.x + Table.width - Whiteball.radius
@@ -45,6 +60,7 @@ function love.update(dt)
         if (Whiteball.x - Whiteball.radius) < Table.x then
             Whiteball.x = Table.x + Whiteball.radius
         end
-        Whiteball.velocity_x = (Whiteball.velocity_x * Table.cushion_elasticity) * -1
+
+        Whiteball.vx = (Whiteball.vx * Table.cushion_elasticity) * -1
     end
 end
