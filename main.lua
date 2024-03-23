@@ -1,20 +1,38 @@
+Vector = {}
+Vector_mt = { __index = Vector }
+
+function Vector:new(x, y)
+    local x = assert(x)
+    local y = assert(y)
+    return setmetatable(
+        { x=x, y=y },
+        Vector_mt
+    )
+end
+
+function Vector:direction(otherVector)
+    local dx = otherVector.x - self.x
+    local dy = otherVector.y - self.y
+    local magnitude = math.sqrt(dx^2 + dy^2)
+    local ux = dx / magnitude
+    local uy = dy / magnitude
+
+    return Vector:new(ux, uy)
+end
+
 Ball = {}
 Ball_mt = { __index = Ball }
 
 function Ball:new(args)
-    local x = assert(args.x)
-    local y = assert(args.y)
+    local pos = assert(args.pos)
     local radius = assert(args.radius)
-    local vx = assert(args.vx)
-    local vy = assert(args.vy)
+    local vel = assert(args.vel)
     local friction = assert(args.friction)
     return setmetatable(
         {
-            x=x,
-            y=y,
+            pos=pos,
             radius=radius,
-            vx=vx,
-            vy=vy,
+            vel=vel,
             friction=friction,
         },
         Ball_mt
@@ -22,20 +40,19 @@ function Ball:new(args)
 end
 
 Table = {
-    x=300,
-    y=100,
+    pos=Vector:new(300, 100),
     width=200,
     height=400,
     cushion_elasticity=0.8,
 }
 
 function love.load()
-    Whiteball = Ball:new{x=400, y=300, radius=10, vx=300, vy=0, friction=0.995}
+    Whiteball = Ball:new{pos=Vector:new(400, 300), radius=10, vel=Vector:new(300, 0), friction=0.995}
 end
 
 function love.draw()
-    love.graphics.circle('fill', Whiteball.x, Whiteball.y, Whiteball.radius)
-    love.graphics.rectangle('line', Table.x, Table.y, Table.width, Table.height, 10, 10)
+    love.graphics.circle('fill', Whiteball.pos.x, Whiteball.pos.y, Whiteball.radius)
+    love.graphics.rectangle('line', Table.pos.x, Table.pos.y, Table.width, Table.height, 10, 10)
 end
 
 function love.update(dt)
@@ -43,24 +60,47 @@ function love.update(dt)
     -- Should I try to shoehorn a fixed timestamp in love somehow?
     -- Whiteball.vx = Whiteball.vx * (Whiteball.friction^dt)
 
-    local vMagnitude = math.sqrt(Whiteball.vx^2 + Whiteball.vy^2)
+    local vMagnitude = math.sqrt(Whiteball.vel.x^2 + Whiteball.vel.y^2)
     local dynamicFriction = Whiteball.friction - (vMagnitude * 0.0015)
     dynamicFriction = math.max(dynamicFriction, 0.99)
 
-    Whiteball.vx = Whiteball.vx * dynamicFriction
+    Whiteball.vel.x = Whiteball.vel.x * dynamicFriction
+    Whiteball.vel.y = Whiteball.vel.y * dynamicFriction
 
-    if math.abs(Whiteball.vx) < 2 then Whiteball.vx = 0 end
+    if math.abs(Whiteball.vel.x) < 2 then Whiteball.vel.x = 0 end
+    if math.abs(Whiteball.vel.y) < 2 then Whiteball.vel.y = 0 end
 
-    Whiteball.x = Whiteball.x + Whiteball.vx * dt
+    Whiteball.pos.x = Whiteball.pos.x + Whiteball.vel.x * dt
+    Whiteball.pos.y = Whiteball.pos.y + Whiteball.vel.y * dt
 
-    if (Whiteball.x + Whiteball.radius) > (Table.x + Table.width) or (Whiteball.x - Whiteball.radius) < Table.x then
-        if (Whiteball.x + Whiteball.radius) > (Table.x + Table.width) then
-            Whiteball.x = Table.x + Table.width - Whiteball.radius
+    if (Whiteball.pos.x + Whiteball.radius) > (Table.pos.x + Table.width) or (Whiteball.pos.x - Whiteball.radius) < Table.pos.x then
+        if (Whiteball.pos.x + Whiteball.radius) > (Table.pos.x + Table.width) then
+            Whiteball.pos.x = Table.pos.x + Table.width - Whiteball.radius
         end
-        if (Whiteball.x - Whiteball.radius) < Table.x then
-            Whiteball.x = Table.x + Whiteball.radius
+        if (Whiteball.pos.x - Whiteball.radius) < Table.pos.x then
+            Whiteball.pos.x = Table.pos.x + Whiteball.radius
         end
 
-        Whiteball.vx = (Whiteball.vx * Table.cushion_elasticity) * -1
+        Whiteball.vel.x = (Whiteball.vel.x * Table.cushion_elasticity) * -1
+    end
+
+    if (Whiteball.pos.y + Whiteball.radius) > (Table.pos.y + Table.height) or (Whiteball.pos.y - Whiteball.radius) < Table.pos.y then
+        if (Whiteball.pos.y + Whiteball.radius) > (Table.pos.y + Table.height) then
+            Whiteball.pos.y = Table.pos.y + Table.height - Whiteball.radius
+        end
+        if (Whiteball.pos.y - Whiteball.radius) < Table.pos.y then
+            Whiteball.pos.y = Table.pos.y + Whiteball.radius
+        end
+
+        Whiteball.vel.y = (Whiteball.vel.y * Table.cushion_elasticity) * -1
+    end
+end
+
+function love.mousepressed(x, y, button)
+    if button == 1 then
+        local clickPos = Vector:new(x, y)
+        local newVelDir = clickPos:direction(Whiteball.pos)
+        Whiteball.vel.x = newVelDir.x * 300
+        Whiteball.vel.y = newVelDir.y * 300
     end
 end
