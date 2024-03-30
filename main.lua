@@ -75,7 +75,7 @@ local function resolveBallCollision(ball, otherBall)
     otherBall.vel.y = otherBall.vel.y + dot * nVec.y
 end
 
-local function collideWithOtherBalls(ball)
+local function collideWithOtherBalls(ball, oldPos)
     for _, otherBall in ipairs(Balls) do
         if ball == otherBall then
             return
@@ -86,6 +86,9 @@ local function collideWithOtherBalls(ball)
         -- https://stackoverflow.com/a/8367547
         local cheatDistanceCalc = (ball.pos.x - otherBall.pos.x)^2 + (ball.pos.y - otherBall.pos.y)^2
         if (ball.radius - otherBall.radius)^2 <= cheatDistanceCalc and cheatDistanceCalc <= (ball.radius + otherBall.radius)^2 then
+            local dir = otherBall.pos:direction(oldPos)
+            ball.pos.x = otherBall.pos.x + (otherBall.radius + ball.radius) * dir.x
+            ball.pos.y = otherBall.pos.y + (otherBall.radius + ball.radius) * dir.y
             resolveBallCollision(ball, otherBall)
         end
     end
@@ -106,6 +109,7 @@ local function updateBalls(dt)
         if math.abs(ball.vel.x) < 2 then ball.vel.x = 0 end
         if math.abs(ball.vel.y) < 2 then ball.vel.y = 0 end
 
+        local oldPos = Vector:new(ball.pos.x, ball.pos.y)
         ball.pos.x = ball.pos.x + ball.vel.x * dt
         ball.pos.y = ball.pos.y + ball.vel.y * dt
 
@@ -131,7 +135,7 @@ local function updateBalls(dt)
             ball.vel.y = (ball.vel.y * Table.cushion_elasticity) * -1
         end
 
-        collideWithOtherBalls(ball)
+        collideWithOtherBalls(ball, oldPos)
     end
 end
 
