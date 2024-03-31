@@ -71,7 +71,7 @@ local function resolveBallCollision2(ball, otherBall)
     local v1n = (unvec.x * ball.vel.x) + (unvec.y * ball.vel.y)
     local v2n = (unvec.x * otherBall.vel.x) + (unvec.y * otherBall.vel.y)
     -- why otherball in second part here?!
-    local v1t = (utvec.x * ball.vel.x) + (utvec.y * otherBall.vel.y)
+    local v1t = (utvec.x * ball.vel.x) + (utvec.y * ball.vel.y)
     local v2t = (utvec.x * otherBall.vel.x) + (utvec.y * otherBall.vel.y)
 
     -- v1t and v1n after collision
