@@ -53,9 +53,45 @@ Balls = {
     Ball:new{pos=Vector:new(350, 250), radius=10, vel=Vector:new(300, 0), friction=0.995}
 }
 
+-- borrowed and translated from c++ here https://stackoverflow.com/questions/68231954/2d-elastic-collision-with-circles
+local function resolveBallCollision2(ball, otherBall)
+    local m1 = 10
+    local m2 = 10
+
+    -- normal vector
+    local nvec = Vector:new(otherBall.pos.x - ball.pos.x, otherBall.pos.y - ball.pos.y)
+    -- unit vector
+    local unvec = Vector:new(
+        nvec.x / math.sqrt((nvec.x * nvec.x) + (nvec.y * nvec.y)),
+        nvec.y / math.sqrt((nvec.x * nvec.x) + (nvec.y * nvec.y))
+    )
+    -- unit tangent vec
+    local utvec = Vector:new(-unvec.y, unvec.x)
+
+    local v1n = (unvec.x * ball.vel.x) + (unvec.y * ball.vel.y)
+    local v2n = (unvec.x * otherBall.vel.x) + (unvec.y * otherBall.vel.y)
+    -- why otherball in second part here?!
+    local v1t = (utvec.x * ball.vel.x) + (utvec.y * otherBall.vel.y)
+    local v2t = (utvec.x * otherBall.vel.x) + (utvec.y * otherBall.vel.y)
+
+    -- v1t and v1n after collision
+    local v1tn = v1t
+    local v2tn = v2t
+    local v1nn = (v1n * (m1 - m2) + (2 * m2) * v2n) / (m1 + m2)
+    local v2nn = (v2n * (m2 - m1) + (2 * m1) * v1n) / (m1 + m2)
+
+    -- new velocities
+    local vel1n = Vector:new(unvec.x * v1nn, unvec.y * v1nn)
+    local vel1tn = Vector:new(utvec.x * v1tn, utvec.y * v1tn)
+    local vel2n = Vector:new(unvec.x * v2nn, unvec.y * v2nn)
+    local vel2tn = Vector:new(utvec.x * v2tn, utvec.y * v2tn)
+    ball.vel = Vector:new(vel1n.x + vel1tn.x, vel1n.y + vel1tn.y)
+    otherBall.vel = Vector:new(vel2n.x + vel2tn.x, vel2n.y + vel2tn.y)
+end
+
 local function resolveBallCollision(ball, otherBall)
-    local dPos = Vector:new(otherBall.pos.x - ball.pos.x, otherBall.pos.y - ball.pos.y)
-    local dVel = Vector:new(otherBall.vel.x - ball.vel.x, otherBall.vel.y - ball.vel.y)
+    local dPos = Vector:new(ball.pos.x - otherBall.pos.x, ball.pos.y - otherBall.pos.y)
+    local dVel = Vector:new(ball.vel.x - otherBall.vel.x, ball.vel.y - otherBall.vel.y)
     -- Calculate the distance between balls
     local dist = math.sqrt(dPos.x * dPos.x + dPos.y * dPos.y)
     -- Normalize the difference in positions to get the collision normal
@@ -89,7 +125,11 @@ local function collideWithOtherBalls(ball, oldPos)
             local dir = otherBall.pos:direction(oldPos)
             ball.pos.x = otherBall.pos.x + (otherBall.radius + ball.radius) * dir.x
             ball.pos.y = otherBall.pos.y + (otherBall.radius + ball.radius) * dir.y
-            resolveBallCollision(ball, otherBall)
+            
+            -- ball.vel.y = 0
+            -- ball.vel.x = 0
+            
+            resolveBallCollision2(ball, otherBall)
         end
     end
 end
