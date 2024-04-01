@@ -54,61 +54,49 @@ Balls = {
 }
 
 -- borrowed and translated from c++ here https://stackoverflow.com/questions/68231954/2d-elastic-collision-with-circles
-local function resolveBallCollision2(ball, otherBall)
+-- works by breaking up the velocities in normal and tangental parts, applying elastic collision formula
+-- to the normal part and then combine them together again for final velocity after collision
+local function resolveBallCollision(ball, otherBall)
+    -- here we can play with different ball masses for some funny bonus mechanics
+    -- NOTE: m2 seems to be the `ball` mass and m1 otherBall. Might be bug in original code
+    -- since they were equal anyway
     local m1 = 10
     local m2 = 10
 
-    -- normal vector
+    -- normal vector of ball and otherBall
     local nvec = Vector:new(otherBall.pos.x - ball.pos.x, otherBall.pos.y - ball.pos.y)
-    -- unit vector
+    -- unit vector of the normal
     local unvec = Vector:new(
         nvec.x / math.sqrt((nvec.x * nvec.x) + (nvec.y * nvec.y)),
         nvec.y / math.sqrt((nvec.x * nvec.x) + (nvec.y * nvec.y))
     )
-    -- unit tangent vec
+    -- unit vector of the tangent at ball collision (it should be perpendicular to the ball and otherBall normal)
     local utvec = Vector:new(-unvec.y, unvec.x)
 
+    -- dot products of the unit vectors (normal and tangent) together with the balls
     local v1n = (unvec.x * ball.vel.x) + (unvec.y * ball.vel.y)
     local v2n = (unvec.x * otherBall.vel.x) + (unvec.y * otherBall.vel.y)
-    -- why otherball in second part here?!
     local v1t = (utvec.x * ball.vel.x) + (utvec.y * ball.vel.y)
     local v2t = (utvec.x * otherBall.vel.x) + (utvec.y * otherBall.vel.y)
 
     -- v1t and v1n after collision
+    -- The tangential velocities (v1tn and v2tn) remain unchanged
+    -- since there's no force applied along the tangent in an elastic collision
     local v1tn = v1t
     local v2tn = v2t
+    -- formula for elastic collision in one dimension (dot product of the normal of the balls)
+    -- https://www.vobarian.com/collisions/2dcollisions2.pdf
     local v1nn = (v1n * (m1 - m2) + (2 * m2) * v2n) / (m1 + m2)
     local v2nn = (v2n * (m2 - m1) + (2 * m1) * v1n) / (m1 + m2)
 
-    -- new velocities
+    -- apply the scalars we got above with unit vectors for final normal and tangental velocities
     local vel1n = Vector:new(unvec.x * v1nn, unvec.y * v1nn)
     local vel1tn = Vector:new(utvec.x * v1tn, utvec.y * v1tn)
     local vel2n = Vector:new(unvec.x * v2nn, unvec.y * v2nn)
     local vel2tn = Vector:new(utvec.x * v2tn, utvec.y * v2tn)
+    -- combine the normal and tangental velocities again for the final 
     ball.vel = Vector:new(vel1n.x + vel1tn.x, vel1n.y + vel1tn.y)
     otherBall.vel = Vector:new(vel2n.x + vel2tn.x, vel2n.y + vel2tn.y)
-end
-
-local function resolveBallCollision(ball, otherBall)
-    local dPos = Vector:new(ball.pos.x - otherBall.pos.x, ball.pos.y - otherBall.pos.y)
-    local dVel = Vector:new(ball.vel.x - otherBall.vel.x, ball.vel.y - otherBall.vel.y)
-    -- Calculate the distance between balls
-    local dist = math.sqrt(dPos.x * dPos.x + dPos.y * dPos.y)
-    -- Normalize the difference in positions to get the collision normal
-    local nVec = Vector:new(dPos.x / dist, dPos.y / dist)
-    -- Calculate the dot product of the velocity difference and collision normal
-    local dot = dVel.x * nVec.x + dVel.y * nVec.y
-
-    -- If they are moving away from each other there is no need to set vectors
-    if dot > 0 then
-        return
-    end
-
-    -- Calculate the component of the velocities along the collision normal
-    ball.vel.x = ball.vel.x + dot * nVec.x
-    ball.vel.y = ball.vel.y + dot * nVec.y
-    otherBall.vel.x = otherBall.vel.x + dot * nVec.x
-    otherBall.vel.y = otherBall.vel.y + dot * nVec.y
 end
 
 local function collideWithOtherBalls(ball, oldPos)
@@ -126,10 +114,7 @@ local function collideWithOtherBalls(ball, oldPos)
             ball.pos.x = otherBall.pos.x + (otherBall.radius + ball.radius) * dir.x
             ball.pos.y = otherBall.pos.y + (otherBall.radius + ball.radius) * dir.y
             
-            -- ball.vel.y = 0
-            -- ball.vel.x = 0
-            
-            resolveBallCollision2(ball, otherBall)
+            resolveBallCollision(ball, otherBall)
         end
     end
 end
