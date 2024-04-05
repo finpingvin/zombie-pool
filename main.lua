@@ -39,6 +39,21 @@ function Ball:new(args)
     )
 end
 
+Pocket = {}
+Pocket_mt = { __index = Pocket }
+
+function Pocket:new(args)
+    local pos = assert(args.pos)
+    local radius = assert(args.radius)
+    return setmetatable(
+        {
+            pos=pos,
+            radius=radius,
+        },
+        Pocket_mt
+    )
+end
+
 Table = {
     pos=Vector:new(300, 100),
     width=200,
@@ -51,6 +66,10 @@ Whiteball = Ball:new{pos=Vector:new(400, 300), radius=10, vel=Vector:new(300, 0)
 Balls = {
     Whiteball,
     Ball:new{pos=Vector:new(350, 250), radius=10, vel=Vector:new(300, 0), friction=0.995}
+}
+
+Pockets = {
+    Pocket:new{pos=Vector:new(300, 100), radius=10},
 }
 
 -- borrowed and translated from c++ here https://stackoverflow.com/questions/68231954/2d-elastic-collision-with-circles
@@ -106,10 +125,9 @@ local function collideWithOtherBalls(ball, oldPos)
         end
 
         -- Check if balls collide using position and radius
-        -- Clever way to avoid math.sqrt for distance, but alot more complex, probably not worth it...
-        -- https://stackoverflow.com/a/8367547
-        local cheatDistanceCalc = (ball.pos.x - otherBall.pos.x)^2 + (ball.pos.y - otherBall.pos.y)^2
-        if (ball.radius - otherBall.radius)^2 <= cheatDistanceCalc and cheatDistanceCalc <= (ball.radius + otherBall.radius)^2 then
+        -- Avoid sqrt by keeping values squared
+        local distanceSquared = (ball.pos.x - otherBall.pos.x)^2 + (ball.pos.y - otherBall.pos.y)^2
+        if (ball.radius - otherBall.radius)^2 <= distanceSquared and distanceSquared <= (ball.radius + otherBall.radius)^2 then
             local dir = otherBall.pos:direction(oldPos)
             ball.pos.x = otherBall.pos.x + (otherBall.radius + ball.radius) * dir.x
             ball.pos.y = otherBall.pos.y + (otherBall.radius + ball.radius) * dir.y
@@ -168,11 +186,18 @@ function love.load()
 end
 
 function love.draw()
+    love.graphics.setColor(1, 1, 1)
+
+    love.graphics.rectangle('line', Table.pos.x, Table.pos.y, Table.width, Table.height, 10, 10)
+
     for _, ball in ipairs(Balls) do
         love.graphics.circle('fill', ball.pos.x, ball.pos.y, ball.radius)    
     end
-    
-    love.graphics.rectangle('line', Table.pos.x, Table.pos.y, Table.width, Table.height, 10, 10)
+
+    love.graphics.setColor(1, 0, 0)
+    for _, pocket in ipairs(Pockets) do
+        love.graphics.circle('fill', pocket.pos.x, pocket.pos.y, pocket.radius)
+    end
 end
 
 function love.update(dt)
